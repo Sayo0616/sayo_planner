@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+'''
+@File    :   map_info.py
+@Contact :   2540307049@qq.com
+@License :   (C)Copyright 2024-2025, sayo
+
+@Modify Time      @Author    @Version    @Desciption
+------------      -------    --------    -----------
+2024/4/5 23:26   sayo      1.0         structured map info classes
+'''
+
 import random
 
 from deprecated.sphinx import deprecated
@@ -51,7 +63,7 @@ class LaneInfo:
 
     def _init_polygons(self):
         """
-
+        初始化多边形列表
         @return:
         """
         distance = self._cal_distance_random_sampling()  # 点单元的采样平均间距
@@ -91,6 +103,10 @@ class LaneInfo:
 
 
 class MapInfo:
+    """
+    结构化地图对象
+    需要使用init进行初始化
+    """
     def __init__(self):
         """
         初始化MapInfo空对象

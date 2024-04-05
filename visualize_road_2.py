@@ -3,7 +3,7 @@
     1. 代码的输入有两个：
     （1） 测试点的坐标
     （2） xodr文件的路径
-    2. 代码的输出会在 visualization_of_traffic 文件夹中生成若干条道路的图片，其中红点代表检查点的位置。
+    2. 代码的输出会在 ../visualization_of_traffic 文件夹中生成若干条道路的图片，其中红点代表检查点的位置。
     3. 注意事项：
         先在本代码的同级目录下先创建空的 visualization_of_traffic 文件夹，再运行代码。
 
@@ -23,6 +23,7 @@ discreteLane_list = discreteNetwork.discretelanes
 
 map_info = MapInfo()
 map_info.init(discreteNetwork)
+
 state = [-342, 142, 0, 0, 0, 4, 2]
 
 start_clock = time.time()
