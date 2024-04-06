@@ -15,8 +15,8 @@ import random
 from deprecated.sphinx import deprecated
 
 from utils.opendrive2discretenet.discrete_network import *
-from planner.IDM.sayo_repository.calculate_functions import *
-from planner.IDM.sayo_repository.const_var import *
+from planner.sayo_planner.calculate_functions import *
+from planner.sayo_planner.const_var import *
 
 
 class LaneInfo:
