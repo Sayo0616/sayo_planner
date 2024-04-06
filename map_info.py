@@ -11,10 +11,13 @@
 '''
 
 import random
+import os
 
 from deprecated.sphinx import deprecated
 
 from utils.opendrive2discretenet.discrete_network import *
+from utils.opendrive2discretenet import parse_opendrive
+
 from planner.sayo_planner.calculate_functions import *
 from planner.sayo_planner.const_var import *
 
@@ -36,7 +39,8 @@ class LaneInfo:
         self.successor_id = []     # 后驱车道id列表
 
         self.predecessors = []   # 前驱车道LaneInfo列表
-        self.successors = []   # 后驱离散车道LaneInfo列表
+        self.successors = []   # 后驱车道LaneInfo列表
+        self.adjacent_lanes = []    # 邻车道LaneInfo列表
 
         self.polygon_distance_factor = POLYGON_DISTANCE_FACTOR  # 分割多边形的距离因子
         self.polygons = []  # 表示道路的多边形
@@ -53,8 +57,8 @@ class LaneInfo:
         self.center_vertices = discrete_lane.center_vertices
         self.left_vertices = discrete_lane.left_vertices
         self.right_vertices = discrete_lane.right_vertices
-        self.predecessor = discrete_lane.predecessor
-        self.successor = discrete_lane.successor
+        self.predecessor_id = discrete_lane.predecessor
+        self.successor_id = discrete_lane.successor
 
         if polygon_distance_factor is not None:
             self.polygon_distance_factor = polygon_distance_factor
@@ -98,14 +102,32 @@ class LaneInfo:
             distance += cal_distance_between_2Dpoints(self.center_vertices[random_index], self.center_vertices[random_index+1])     # 点单元的距离
         return distance / SAMPLING_COUNT
 
-    def _init_connected_lane(self):
-        pass
+    def add_connected_lane(self, connected_lane, connection_type: str = "predecessor") -> bool:
+        """
+        添加连接车道LaneInfo对象
+        @param connected_lane: 连接车道LaneInfo对象列表
+        @param connection_type: 连接车道的类型：
+                                predecessor：前驱车道；
+                                successor：后继车道；
+                                adjacent：相邻车道
+        @return: 添加成功：True，添加失败：False
+        """
+        if connection_type == "predecessor":
+            self.predecessors.append(connected_lane)
+        elif connection_type == "successor":
+            self.successors.append(connected_lane)
+        elif connection_type == "adjacent":
+            self.adjacent_lanes.append(connected_lane)
+        else:
+            print("Invalid connection type!")
+            return False
+        return True
 
 
 class MapInfo:
     """
     结构化地图对象
-    需要使用init进行初始化
+    需要使用init_by_network / init_by_file进行初始化
     """
     def __init__(self):
         """
@@ -114,9 +136,9 @@ class MapInfo:
         self.map_id = None
         self.map_name = None
 
-        self.lanes_dict = {}     # LaneInfo道路对象字典
+        self._lanes_dict = {}     # LaneInfo道路对象字典
 
-    def init(self, discrete_network: DiscreteNetwork):
+    def init_by_network(self, discrete_network: DiscreteNetwork):
         """
         将离散网络DiscreteNetwork对象初始化为MapInfo对象
         @param discrete_network:
@@ -125,7 +147,40 @@ class MapInfo:
         for discrete_lane in discrete_network.discretelanes:
             lane_info = LaneInfo()
             lane_info.init_lane(discrete_lane)
-            self.lanes_dict[lane_info.lane_id] = lane_info
+            self._lanes_dict[lane_info.lane_id] = lane_info
+
+        # 初始化车道连接信息
+        self._connect_lanes()
+
+    def init_by_file(self, xodr_file_path: str = ""):
+        """
+        通过高精地图xodr文件读取数据初始化MapInfo对象
+        @param xodr_file_path: xodr文件路径
+        @return:
+        """
+        if not os.path.exists(xodr_file_path):
+            return
+
+        # 读取 xodr 文件
+        discreteNetwork = parse_opendrive(xodr_file_path)
+        self.init_by_network(discreteNetwork)
+
+    def _connect_lanes(self):
+        """
+        根据车道id连接各车道
+        【待完成】：
+            1. 需添加对相邻车道的连接部分
+        @return:
+        """
+
+        for lane_info in self._lanes_dict.values():
+            for lane_id in lane_info.predecessor_id:
+                if self._lanes_dict.get(lane_id) is not None:
+                    lane_info.add_connected_lane(self._lanes_dict[lane_id], connection_type="predecessor")
+            for lane_id in lane_info.successor_id:
+                if self._lanes_dict.get(lane_id) is not None:
+                    lane_info.add_connected_lane(self._lanes_dict[lane_id], connection_type="successor")
+
 
     @staticmethod
     def judge_in_lane_ray_casting(point, lane_info: LaneInfo) -> bool:
@@ -140,20 +195,21 @@ class MapInfo:
                 return True
         return False
 
-    def find_lane_located(self, point) -> list:
+    def find_lanes_located(self, point) -> list:
         """
 
         @param point: 一个包含(x, y)坐标，可迭代的2维点信息，例：[x,y], (x,y)
         @return: lanes_located，LaneInfo的车道对象集合
         """
         lanes_located = []  # 点point所属的车道列表
-        for lane_info in self.lanes_dict.values():
+        for lane_info in self._lanes_dict.values():
             if MapInfo.judge_in_lane_ray_casting(point, lane_info):
                 lanes_located.append(lane_info)
         return lanes_located
 
-
-
+    @property
+    def lanes_dict(self) -> dict:
+        return self._lanes_dict
 
 
 @deprecated("Please use MapInfo class instead", version="0.1")
@@ -234,7 +290,19 @@ class MapInfo_Old:
 
 
 
-
+if __name__ == '__main__':
+    xodr_file_path = "../../scenario/replay/0_140_straight_straight_141/0_140_straight_straight_141.xodr"
+    map_info = MapInfo()
+    map_info.init_by_file(xodr_file_path=xodr_file_path)
+    for key, value in map_info.lanes_dict.items():
+        print("\n车道id：", key)
+        print("前驱车道：")
+        for predecessor in value.predecessors:
+            print(predecessor.lane_id, end=", ")
+        print("\n后继车道：")
+        for successor in value.successors:
+            print(successor.lane_id, end=", ")
+        print()
 
 
 

@@ -20,7 +20,7 @@ discreteLane_list = discreteNetwork.discretelanes
 
 
 map_info = MapInfo()
-map_info.init(discreteNetwork)
+map_info.init_by_network(discreteNetwork)
 
 state = [-342, 142, 0, 0, 0, 4, 2]
 
