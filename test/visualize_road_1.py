@@ -19,7 +19,7 @@ xx = 1020
 yy = 1000
 
 # 读取 xodr 文件
-xodr_file = r"../../scenario/serial/maps/TJST/TJST.xodr"
+xodr_file = r"../../../scenario/serial/maps/TJST/TJST.xodr"
 discreteNetwork = parse_opendrive(xodr_file)
 discreteLane_list = discreteNetwork.discretelanes
 

@@ -18,8 +18,8 @@ from deprecated.sphinx import deprecated
 from utils.opendrive2discretenet.discrete_network import *
 from utils.opendrive2discretenet import parse_opendrive
 
-from planner.sayo_planner.calculate_functions import *
-from planner.sayo_planner.const_var import *
+from planner.sayo_planner.planner.calculate_functions import *
+from planner.sayo_planner.planner.const_var import *
 
 
 class LaneInfo:
@@ -291,7 +291,7 @@ class MapInfo_Old:
 
 
 if __name__ == '__main__':
-    xodr_file_path = "../../scenario/replay/0_140_straight_straight_141/0_140_straight_straight_141.xodr"
+    xodr_file_path = "../../../scenario/replay/0_140_straight_straight_141/0_140_straight_straight_141.xodr"
     map_info = MapInfo()
     map_info.init_by_file(xodr_file_path=xodr_file_path)
     for key, value in map_info.lanes_dict.items():

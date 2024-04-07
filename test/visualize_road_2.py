@@ -3,7 +3,7 @@
     1. 代码的输入有两个：
     （1） 测试点的坐标
     （2） xodr文件的路径
-    2. 代码的输出会在 ./visualization_of_traffic 文件夹中生成若干条道路的图片，其中红点代表检查点的位置。
+    2. 代码的输出会在 ../visualization_of_traffic 文件夹中生成若干条道路的图片，其中红点代表检查点的位置。
 
 """
 import time
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from map_info import *
 
 # 读取 xodr 文件
-xodr_file = r"../../scenario/serial/maps/TJST/TJST.xodr"
+xodr_file = r"../../../scenario/serial/maps/TJST/TJST.xodr"
 discreteNetwork = parse_opendrive(xodr_file)
 discreteLane_list = discreteNetwork.discretelanes
 
@@ -22,11 +22,12 @@ discreteLane_list = discreteNetwork.discretelanes
 map_info = MapInfo()
 map_info.init_by_network(discreteNetwork)
 
+# 设置测试车坐标等信息
 state = [-342, 142, 0, 0, 0, 4, 2]
 
 start_clock = time.time()
 
-lanes_located = map_info.find_lane_located((state[0], state[1]))
+lanes_located = map_info.find_lanes_located((state[0], state[1]))
 
 end_clock = time.time()
 
@@ -38,7 +39,6 @@ for lane in lanes_located:
 
 print("耗时：", str(end_clock - start_clock))
 
-# 设置测试点坐标
 xx, yy = state[0], state[1]
 # output_point = lane.center_vertices[corresponding_index]
 
@@ -64,6 +64,6 @@ for i in discreteLane_list:
         plt.ylabel('Y Axis')  # 设置y轴标签
         plt.title(str(lane_id))  # 设置图形标题
         plt.grid(True)  # 显示网格
-        plt.savefig("./visualization_of_traffic/{}.png".format(str(lane_id)), dpi=300, bbox_inches='tight')
+        plt.savefig("../visualization_of_traffic/{}.png".format(str(lane_id)), dpi=300, bbox_inches='tight')
         plt.show()  # 显示图形
     # plt.close()  # 避免累计图形
