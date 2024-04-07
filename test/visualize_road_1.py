@@ -19,7 +19,7 @@ xx = 1020
 yy = 1000
 
 # 读取 xodr 文件
-xodr_file = r"../../../scenario/serial/maps/TJST/TJST.xodr"
+xodr_file = r"../../../scenario/fragment/0_76_merge_82/0_76_merge_82.xodr"
 discreteNetwork = parse_opendrive(xodr_file)
 discreteLane_list = discreteNetwork.discretelanes
 
@@ -34,8 +34,8 @@ colors = [
     "cyan",       # 青色
     "magenta",     # 洋红色
     "black",       # 黑色
-    "white",       # 白色
-    "gray",        # 灰色
+    # "white",       # 白色
+    # "gray",        # 灰色
     "pink",        # 粉红色
     "brown",       # 棕色
     "olive",       # 橄榄绿
@@ -45,9 +45,9 @@ colors = [
     "indigo",      # 靛蓝色
     "maroon",       # 褐红色
     "violet",       # 紫罗兰色
-    "beige",       # 米色
+    # "beige",       # 米色
     "gold",        # 金色
-    "silver",       # 银色
+    # "silver",       # 银色
 ]
 
 plt.figure(figsize=(8, 6))  # 创建一个新的图形，并设置其大小
@@ -60,11 +60,15 @@ for index, i in enumerate(tqdm(discreteLane_list,  total=len(discreteLane_list))
     right_point = i.right_vertices  # 车道右边界散点序列
     center_point = i.center_vertices  # 车道中心线散点序列
     random_index = random.randint(0, len(colors)-1)
+    plt.scatter(left_point[0, 0], left_point[0, 1], s=5, c=colors[random_index])
     plt.scatter(left_point[:, 0], left_point[:, 1], s=0.1, c=colors[random_index])
     plt.scatter(right_point[:, 0], right_point[:, 1], s=0.1, c=colors[random_index])
-    plt.scatter(center_point[:, 0], center_point[:, 1], s=0.1, c=colors[random_index])
+    plt.scatter(right_point[0, 0], right_point[0, 1], s=5, c=colors[random_index])
+    # plt.scatter(center_point[:, 0], center_point[:, 1], s=0.1, c=colors[random_index])
 
-    plt.scatter(xx, yy, s=25, c="red")  # 标注检查点
+    # plt.scatter(xx, yy, s=25, c="red")  # 标注检查点
     plt.xlabel('X Axis')  # 设置x轴标签
     plt.ylabel('Y Axis')  # 设置
+    offset = 0 #random_index / (len(colors)-1) * (right_point[len(center_point)//2, 1] - left_point[len(center_point)//2, 1])
+    plt.text(center_point[len(center_point)//2, 0], center_point[len(center_point)//2, 1] + offset, lane_id, size="small")
 plt.show()

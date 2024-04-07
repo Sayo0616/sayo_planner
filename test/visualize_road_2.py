@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from map_info import *
 
 # 读取 xodr 文件
-xodr_file = r"../../../scenario/serial/maps/TJST/TJST.xodr"
+xodr_file = r"../../../scenario/fragment/5_3_straight_straight_9/5_3_straight_straight_9.xodr"
 discreteNetwork = parse_opendrive(xodr_file)
 discreteLane_list = discreteNetwork.discretelanes
 

@@ -6,7 +6,7 @@
 * **planner**    
 规控器目录
   * **calculate_functions.py:**   
-    数学计算算方法
+    数学计算方法
   * **const_var.py:**  
   常量定义文件  
   * **map_info:**   

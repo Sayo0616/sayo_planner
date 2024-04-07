@@ -30,6 +30,7 @@ class LaneInfo:
     def __init__(self):
         """
         初始化空LaneInfo对象
+        lane_id：format：<road.id>.<lane_section.id>.<inner_lane.id/outer_lane.id>.<width.id>
         """
         self.lane_id = None
         self.center_vertices = []
@@ -102,7 +103,7 @@ class LaneInfo:
             distance += cal_distance_between_2Dpoints(self.center_vertices[random_index], self.center_vertices[random_index+1])     # 点单元的距离
         return distance / SAMPLING_COUNT
 
-    def add_connected_lane(self, connected_lane, connection_type: str = "predecessor") -> bool:
+    def add_connected_lane(self, connected_lane = None, connection_type: str = "predecessor") -> bool:
         """
         添加连接车道LaneInfo对象
         @param connected_lane: 连接车道LaneInfo对象列表
@@ -112,6 +113,8 @@ class LaneInfo:
                                 adjacent：相邻车道
         @return: 添加成功：True，添加失败：False
         """
+        if connected_lane is None:
+            return False
         if connection_type == "predecessor":
             self.predecessors.append(connected_lane)
         elif connection_type == "successor":
@@ -168,19 +171,20 @@ class MapInfo:
     def _connect_lanes(self):
         """
         根据车道id连接各车道
-        【待完成】：
-            1. 需添加对相邻车道的连接部分
         @return:
         """
 
         for lane_info in self._lanes_dict.values():
             for lane_id in lane_info.predecessor_id:
-                if self._lanes_dict.get(lane_id) is not None:
-                    lane_info.add_connected_lane(self._lanes_dict[lane_id], connection_type="predecessor")
+                lane_info.add_connected_lane(self._lanes_dict.get(lane_id), connection_type="predecessor")
             for lane_id in lane_info.successor_id:
-                if self._lanes_dict.get(lane_id) is not None:
-                    lane_info.add_connected_lane(self._lanes_dict[lane_id], connection_type="successor")
-
+                lane_info.add_connected_lane(self._lanes_dict.get(lane_id), connection_type="successor")
+            id_parts = list(lane_info.lane_id.split('.'))
+            adjacent_lane_ids = [int(id_parts[2]) + factor for factor in (1, -1)]
+            for id_part in map(str, adjacent_lane_ids):
+                id_parts[2] = id_part
+                adjacent_id = '.'.join(id_parts)
+                lane_info.add_connected_lane(self.lanes_dict.get(adjacent_id), connection_type="adjacent")
 
     @staticmethod
     def judge_in_lane_ray_casting(point, lane_info: LaneInfo) -> bool:
@@ -291,7 +295,7 @@ class MapInfo_Old:
 
 
 if __name__ == '__main__':
-    xodr_file_path = "../../../scenario/replay/0_140_straight_straight_141/0_140_straight_straight_141.xodr"
+    xodr_file_path = "../../../scenario/fragment/0_76_merge_82/0_76_merge_82.xodr"
     map_info = MapInfo()
     map_info.init_by_file(xodr_file_path=xodr_file_path)
     for key, value in map_info.lanes_dict.items():
@@ -302,6 +306,9 @@ if __name__ == '__main__':
         print("\n后继车道：")
         for successor in value.successors:
             print(successor.lane_id, end=", ")
+        print("\n相邻车道：")
+        for adjacent_lane in value.adjacent_lanes:
+            print(adjacent_lane.lane_id, end=", ")
         print()
 
 
