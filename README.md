@@ -5,10 +5,14 @@
 ## Contents Introduction
 * **planner**    
 规控器目录
+  * **assets**：    
+  资产
   * **calculate_functions.py:**   
     数学计算方法
   * **const_var.py:**  
   常量定义文件  
+  * **global_path_planner.py:**
+  全局指引路径规划器
   * **map_info:**   
     结构化地图信息相关类
 * **sample_reference_code**  
@@ -48,3 +52,29 @@
 运行`test/visualize_road_2.py`文件  
 
 ---  
+
+## How to Test Global Path Planner
+
+1. **坐标点修改**：  
+修改`test/visualize_road_1.py`文件中的start_pos, target_pos  
+2. **高精地图文件路径修改**：  
+修改`test/visualize_road_1.py`文件中的`xodr_file`，更改高精地图xodr文件路径
+3. **运行**：   
+运行`test/visualize_road_1.py`文件  
+
+  #### 示例  
+  ```
+  # 设置测试点坐标
+  start_pos = (1018, 944)
+  target_pos = (1136, 952)
+  
+  # 读取 xodr 文件
+  xodr_file = r"../../../scenario/fragment/0_76_merge_82/0_76_merge_82.xodr"
+  ```
+  控制台输出：  
+
+  ![globla_path_planner_example_console](assets/globla_path_planner_example_console.png) 
+  
+  plot画图:  
+  
+  ![global_path_planner_example_plot](assets/global_path_planner_example_plot.png)

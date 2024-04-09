@@ -14,12 +14,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 
+from map_info import *
+from global_path_planner import *
+
 # 设置测试点坐标
-start_pos = (950, 1003)
-target_pos = (1100, 1014)
+start_pos = (1018, 944)
+target_pos = (1136, 952)
 
 # 读取 xodr 文件
-xodr_file = r"../../../scenario/replay/0_140_straight_straight_141/0_140_straight_straight_141.xodr"
+xodr_file = r"../../../scenario/fragment/0_76_merge_82/0_76_merge_82.xodr"
 discreteNetwork = parse_opendrive(xodr_file)
 discreteLane_list = discreteNetwork.discretelanes
 
@@ -75,3 +78,29 @@ for index, i in enumerate(tqdm(discreteLane_list,  total=len(discreteLane_list))
 plt.scatter(target_pos[0], target_pos[1], s=10, c="red")
 plt.scatter(start_pos[0], start_pos[1], s=10, c="blue")
 plt.show()
+
+# 初始化地图信息
+map_info = MapInfo()
+map_info.init_by_file(xodr_file_path=xodr_file)
+
+task_info = {
+                        "startPos": start_pos,
+                        "targetPos": target_pos,
+                        "waypoint": [],
+                        "dt": 0.1
+                    }
+
+# 初始化规划器
+global_planner = GlobalPathPlanner()
+global_planner.init(map_info=map_info, task_info=task_info)
+
+# 开始规划
+start_clock = time.time()
+lane_paths = global_planner.planning()
+end_clock = time.time()
+print("Planning time: " + str(end_clock - start_clock))
+if lane_paths is None:
+    print("No path")
+else:
+    for lane_id in lane_paths:
+        print(lane_id)
