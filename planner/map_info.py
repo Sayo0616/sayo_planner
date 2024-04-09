@@ -42,9 +42,10 @@ class LaneInfo:
         self.predecessors = []   # 前驱车道LaneInfo列表
         self.successors = []   # 后驱车道LaneInfo列表
         self.adjacent_lanes = []    # 邻车道LaneInfo列表
+        self._length = 0.    # 车道估计长度
 
         self.polygon_distance_factor = POLYGON_DISTANCE_FACTOR  # 分割多边形的距离因子
-        self.polygons = []  # 表示道路的多边形
+        self.polygons = []  # 表示道路的多边形列表
         self.polygon_index_factor = POLYGON_INDEX_FACTOR  # 分割多边形的索引因子
 
     def init_lane(self, discrete_lane: DiscreteLane, polygon_distance_factor=None):
@@ -68,7 +69,7 @@ class LaneInfo:
 
     def _init_polygons(self):
         """
-        初始化多边形列表
+        初始化多边形列表，以及车道估计长度
         @return:
         """
         distance = self._cal_distance_random_sampling()  # 点单元的采样平均间距
@@ -89,6 +90,10 @@ class LaneInfo:
 
             self.polygons.append(boundary)
 
+            # 累加车道长度
+            self._length += (
+                cal_Euclidean_distance(self.center_vertices[begin_index], self.center_vertices[end_index]))
+
             begin_index = end_index  # 更新开始索引
 
     def _cal_distance_random_sampling(self) -> float:
@@ -100,7 +105,7 @@ class LaneInfo:
         distance = 0.
         for i in range(SAMPLING_COUNT):
             random_index = int(random.random() * (len(self.center_vertices)-1))
-            distance += cal_distance_between_2Dpoints(self.center_vertices[random_index], self.center_vertices[random_index+1])     # 点单元的距离
+            distance += cal_Euclidean_distance(self.center_vertices[random_index], self.center_vertices[random_index + 1])     # 点单元的距离
         return distance / SAMPLING_COUNT
 
     def add_connected_lane(self, connected_lane = None, connection_type: str = "predecessor") -> bool:
@@ -126,6 +131,25 @@ class LaneInfo:
             return False
         return True
 
+    @property
+    def length(self):
+        return self._length
+
+    def get_access_lanes(self) -> list:
+        """
+        获取该车到可通往的车道
+        @return: 后继车道与相邻车道的列表
+                lanes = [
+                            [label: str, lane: LanInfo],
+                        ]
+                label: "successor" or "adjacent"
+        """
+        lanes = list()
+        for lane in self.successors:
+            lanes.append(list(["successor", lane]))
+        for lane in self.adjacent_lanes:
+            lanes.append(list(["adjacent", lane]))
+        return lanes
 
 class MapInfo:
     """
@@ -177,8 +201,10 @@ class MapInfo:
         for lane_info in self._lanes_dict.values():
             for lane_id in lane_info.predecessor_id:
                 lane_info.add_connected_lane(self._lanes_dict.get(lane_id), connection_type="predecessor")
+
             for lane_id in lane_info.successor_id:
                 lane_info.add_connected_lane(self._lanes_dict.get(lane_id), connection_type="successor")
+
             id_parts = list(lane_info.lane_id.split('.'))
             adjacent_lane_ids = [int(id_parts[2]) + factor for factor in (1, -1)]
             for id_part in map(str, adjacent_lane_ids):
@@ -218,7 +244,9 @@ class MapInfo:
 
 @deprecated("Please use MapInfo class instead", version="0.1")
 class MapInfo_Old:
-
+    """
+    旧版MapInfo类，目前不再使用，仅作保留
+    """
     distance_divide = 20.   # 分割道路的距离
     distance_judge = 6. # 进一步判断的距离条件
     def __init__(self):
@@ -234,7 +262,7 @@ class MapInfo_Old:
 
 
     def _distance_of_adj_vertices(self, vertices):
-        return  cal_distance_between_2Dpoints(vertices[0], vertices[1])
+        return  cal_Euclidean_distance(vertices[0], vertices[1])
 
     def lane_match_initiate(self, state):
         """
@@ -262,7 +290,7 @@ class MapInfo_Old:
                 end_point = center_vertices[end_index]    # 采样线段终止点
                 slope = cal_slope(start_point, end_point)   # 采样线段斜率
                 projection_point = cal_projection_point(slope, start_point, pos_vehicle)    # 主车坐标在采样线段上的投影点
-                projection_distance = cal_distance_between_2Dpoints(projection_point, pos_vehicle)  # 投影距离：原点距离投影点的距离
+                projection_distance = cal_Euclidean_distance(projection_point, pos_vehicle)  # 投影距离：原点距离投影点的距离
 
                 # 若投影距离 > 界限（判断距离）则跳过
                 if projection_distance > self.distance_judge:

@@ -1,14 +1,24 @@
 import math
 
 
-def cal_distance_between_2Dpoints(pos1, pos2)-> float:
+def cal_Euclidean_distance(pos1, pos2)-> float:
     """
-    计算两点间距
-    :param pos1:点1的2D坐标 （Tuple，List）
+    计算两点的欧式距离（直线间距）
+    :param pos1: 点1的2D坐标 （Tuple，List）
     :param pos2: 点2的2D坐标（Tuple，List）
     :return: 两点间距
     """
     return math.sqrt((pos1[0]-pos2[0])**2 + (pos1[1]-pos2[1])**2)
+
+
+def cal_Manhattan_distance(pos1, pos2) -> float:
+    """
+    计算两点的曼哈顿距离
+    @param pos1: 点1的2D坐标 （Tuple，List）
+    @param pos2: 点2的2D坐标（Tuple，List）
+    @return:
+    """
+    return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
 
 def cal_slope(point1, point2)-> float:
@@ -31,6 +41,7 @@ def cal_projection_point(slope, datum_point, point)-> tuple:
     """
     offset = (slope * (point[1] - datum_point[1]) + point[0] - datum_point[0]) / (slope**2 + 1)
     return tuple(num + offset for num in datum_point)
+
 
 def judge_point2_on_line(points):
     """

@@ -15,11 +15,11 @@ import numpy as np
 import random
 
 # 设置测试点坐标
-xx = 1020
-yy = 1000
+start_pos = (950, 1003)
+target_pos = (1100, 1014)
 
 # 读取 xodr 文件
-xodr_file = r"../../../scenario/fragment/0_76_merge_82/0_76_merge_82.xodr"
+xodr_file = r"../../../scenario/replay/0_140_straight_straight_141/0_140_straight_straight_141.xodr"
 discreteNetwork = parse_opendrive(xodr_file)
 discreteLane_list = discreteNetwork.discretelanes
 
@@ -71,4 +71,7 @@ for index, i in enumerate(tqdm(discreteLane_list,  total=len(discreteLane_list))
     plt.ylabel('Y Axis')  # 设置
     offset = 0 #random_index / (len(colors)-1) * (right_point[len(center_point)//2, 1] - left_point[len(center_point)//2, 1])
     plt.text(center_point[len(center_point)//2, 0], center_point[len(center_point)//2, 1] + offset, lane_id, size="small")
+
+plt.scatter(target_pos[0], target_pos[1], s=10, c="red")
+plt.scatter(start_pos[0], start_pos[1], s=10, c="blue")
 plt.show()
