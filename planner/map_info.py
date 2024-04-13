@@ -83,10 +83,12 @@ class LaneInfo:
             end_index = (begin_index + self.polygon_index_factor) if (begin_index + self.polygon_index_factor) < len(
                 self.center_vertices) else len(self.center_vertices) - 1  # 结束索引
 
-            boundary = []
-            for index in (begin_index, end_index):
-                boundary.append(self.left_vertices[index])
-                boundary.append(self.right_vertices[index])
+            boundary = list()
+            # 按左前，左后，右后，右前顺序
+            boundary.append(self.left_vertices[begin_index])
+            boundary.append(self.left_vertices[end_index])
+            boundary.append(self.right_vertices[end_index])
+            boundary.append(self.right_vertices[begin_index])
 
             self.polygons.append(boundary)
 
@@ -229,7 +231,7 @@ class MapInfo:
         """
 
         @param point: 一个包含(x, y)坐标，可迭代的2维点信息，例：[x,y], (x,y)
-        @return: lanes_located，LaneInfo的车道对象集合
+        @return: lanes_located，LaneInfo的车道对象列表
         """
         lanes_located = []  # 点point所属的车道列表
         for lane_info in self._lanes_dict.values():
