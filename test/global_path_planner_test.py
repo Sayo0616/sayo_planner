@@ -28,8 +28,8 @@ visualizer = lane_visualizer(width=20, height=20)
 visualizer.init(map_info, points)
 
 # 初始化规划器
-global_planner = GlobalPathPlanner()
-global_planner.init(map_info=map_info, task_info=task_info)
+global_planner = GlobalPathPlanner(map_info=map_info)
+global_planner.init(task_info=task_info)
 
 # 开始规划
 start_clock = time.time()

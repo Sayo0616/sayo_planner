@@ -1,5 +1,6 @@
 import math
-
+import numpy as np
+from scipy.interpolate import interp1d
 
 def cal_Euclidean_distance(pos1, pos2)-> float:
     """
@@ -76,3 +77,32 @@ def point_in_polygon(point, polygon):
         return True  # 点在多边形内
     return False  # 点不在多边形内
 
+
+def cal_curve_distance_interpolation(curve1, curve2) -> float:
+    """
+    插值计算两条曲线的偏差
+    @param curve1: 曲线1
+    @param curve2: 曲线2
+    @return: 偏差值
+    """
+
+    x_data1 = np.array(curve1[:0])
+    y_data1 = np.array(curve1[:1])
+    x_data2 = np.array(curve2[:0])
+    y_data2 = np.array(curve2[:1])
+
+    # 确定插值的范围不超出原始数据的范围
+    x_min = max(min(x_data1), min(x_data2))
+    x_max = min(max(x_data1), max(x_data2))
+
+    # 使用插值方法将两条曲线的数据点转换为相同数量
+    f1 = interp1d(x_data1, y_data1, kind='quadratic', bounds_error=False, fill_value="extrapolate")
+    f2 = interp1d(x_data2, y_data2, kind='quadratic', bounds_error=False, fill_value="extrapolate")
+
+    # 定义相同数量的新数据点
+    x_interp = np.linspace(x_min, x_max, num=len(curve1))
+    y_interp1 = f1(x_interp)
+    y_interp2 = f2(x_interp)
+
+    # 计算两条曲线的吻合程度
+    return np.sum((y_interp1 - y_interp2) ** 2)  # 计算平方差

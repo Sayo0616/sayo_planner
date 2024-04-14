@@ -78,16 +78,26 @@ class lane_visualizer:
         tasks = range(len(self.map_info.lanes_dict.values()))  # 创建进度条
         self.points = points
 
-    def plot_point(self, x, y, text="", color='red'):
+    def plot_point(self, x, y, text="", color='red', size=None):
         """
         画点
         @param x: x坐标
         @param y: y坐标
         @param text: 标注的文字,默认为空
         @param color: 颜色，默认为红色
+        @param size: 大小
         @return:
         """
-        plt.scatter(x, y, s=self.point_size * 100, c=color)
+        if type(size) == float or (type(size) == int):
+            pass
+        elif size == 'big':
+            size = self.point_size * 100
+        elif size == 'small':
+            size = self.point_size
+        else:
+            size = self.point_size * 20
+
+        plt.scatter(x, y, s=size, c=color)
         plt.text(x, y, text, size="small")
 
 
