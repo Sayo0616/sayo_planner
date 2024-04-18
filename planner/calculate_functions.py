@@ -22,7 +22,7 @@ def cal_Manhattan_distance(pos1, pos2) -> float:
     return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
 
-def cal_slope(point1, point2)-> float:
+def cal_slope(point1, point2) -> float:
     """
     计算直线斜率
     :param point1:  直线上一点1
@@ -30,6 +30,21 @@ def cal_slope(point1, point2)-> float:
     :return: 斜率
     """
     return (point2[1] - point1[1]) / (point2[0] - point1[0])
+
+def cal_theta(vector) -> float:
+    x, y = vector
+    if x == 0:
+        if y > 0:
+            return np.pi / 2
+        elif y < 0:
+            return -np.pi / 2
+        else:
+            return 0
+    else:
+        angle = np.arctan(y / x)
+        if x < 0:
+            angle += np.pi
+        return angle
 
 
 def cal_projection_point(slope, datum_point, point)-> tuple:

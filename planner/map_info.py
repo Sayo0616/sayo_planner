@@ -31,6 +31,7 @@ class LaneInfo:
         """
         初始化空LaneInfo对象
         lane_id：format：<road.id>.<lane_section.id>.<inner_lane.id/outer_lane.id>.<width.id>
+        polygons：多边形列表，每一个多边形的顶点顺序为：左前，左后，右后，右前
         """
         self.lane_id = None
         self.center_vertices = []
@@ -38,6 +39,7 @@ class LaneInfo:
         self.right_vertices = []
         self.predecessor_id = []     # 前驱车道id列表
         self.successor_id = []     # 后驱车道id列表
+        self.adjacent_id = []   # 相邻车道id列表
 
         self.predecessors = []   # 前驱车道LaneInfo列表
         self.successors = []   # 后驱车道LaneInfo列表
@@ -128,6 +130,7 @@ class LaneInfo:
             self.successors.append(connected_lane)
         elif connection_type == "adjacent":
             self.adjacent_lanes.append(connected_lane)
+            self.adjacent_id.append(connected_lane.lane_id)
         else:
             print("Invalid connection type!")
             return False
@@ -222,14 +225,17 @@ class MapInfo:
         @param lane_info: 道路信息
         @return: True：在道路上；False：不在道路上
         """
-        for polygon in lane_info.polygons:
-            if point_in_polygon(point, polygon):
-                return True
+
+        # 若点point与车道中心线起点的直线距离大于 车道长度+默认车道宽度 ，则直接返回false
+        if cal_Euclidean_distance(point, lane_info.center_vertices[0]) <= lane_info.length + DEFAULT_ROAD_WIDTH:
+            for polygon in lane_info.polygons:
+                if point_in_polygon(point, polygon):
+                    return True
         return False
 
     def find_lanes_located(self, point) -> list:
         """
-
+        查找所属车道列表
         @param point: 一个包含(x, y)坐标，可迭代的2维点信息，例：[x,y], (x,y)
         @return: lanes_located，LaneInfo的车道对象列表
         """
@@ -239,9 +245,70 @@ class MapInfo:
                 lanes_located.append(lane_info)
         return lanes_located
 
+    def find_lane_located_reference(self, point, pre_lane_id) -> LaneInfo:
+        """
+        参考历史车道，定位到所属车道
+        @param point: 坐标点
+        @param pre_lane_id: 之前所属车道的id
+        @return: lane_located，LaneInfo的车道对象
+        """
+
+        pre_lane: LaneInfo = self.lanes_dict.get(pre_lane_id)
+
+        if pre_lane is not None:
+            for polygon in pre_lane.polygons:
+                if point_in_polygon(point, polygon):
+                    return pre_lane
+            for label, lane_info in pre_lane.get_access_lanes():
+                for polygon in lane_info.polygons:
+                    if point_in_polygon(point, polygon):
+                        return lane_info
+        return None
+
+
+
     @property
     def lanes_dict(self) -> dict:
         return self._lanes_dict
+
+
+class LocalCoordinate:
+    """
+    局部坐标系
+    """
+    def __init__(self, origin: list, theta) -> None:
+        """
+        初始化局部坐标系
+        @param origin (list): 一个包含局部坐标系原点坐标的元组，例如 [x, y]
+        @param theta: 局部坐标系的x方向向量与全局坐标x方向向量的夹角
+        """
+
+        orientation = [[math.cos(theta), -math.sin(theta)], [math.sin(theta), math.cos(theta)]]
+        self.origin = np.array(origin)
+        self.orientation = np.array(orientation)
+        self.inverse_orientation = np.linalg.inv(self.orientation)
+
+    def local_to_global(self, local_coords):
+        """
+        局部坐标转化为全局坐标
+        @param local_coords: (tuple) 一个包含局部坐标的元组，例如 (x_local, y_local)
+        @return: global_coords (numpy.ndarray): 一个包含局部坐标的 NumPy 数组，例如 [x_local, y_local]
+        """
+        local_coords = np.array(local_coords)
+        global_coords = np.dot(self.orientation, local_coords) + self.origin
+        return global_coords
+
+    def global_to_local(self, global_coords):
+        """
+        将全局坐标转换为局部坐标
+
+        @param global_coords: (tuple) 一个包含全局坐标的元组，例如 (x_global, y_global)
+
+        @return: local_coords (numpy.ndarray): 一个包含局部坐标的 NumPy 数组，例如 [x_local, y_local]
+        """
+        global_coords = np.array(global_coords - self.origin)
+        local_coords = np.dot(self.inverse_orientation, global_coords)
+        return local_coords
 
 
 @deprecated("Please use MapInfo class instead", version="0.1")

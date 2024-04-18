@@ -1,4 +1,4 @@
-from lane_visualizer import lane_visualizer
+from lane_visualizer import LaneVisualizer
 import time
 from map_info import MapInfo
 
@@ -7,7 +7,7 @@ from global_path_planner import GlobalPathPlanner
 xodr_file = "../../../scenario/fragment/0_76_merge_82/0_76_merge_82.xodr"
 
 points = [
-    [1140, 972, "start", "blue"],   # 起始点
+    [1130, 971, "start", "blue"],   # 起始点
     [1004, 960, "target", "red"]   # 目标点
 ]
 
@@ -24,7 +24,7 @@ task_info = {
 map_info = MapInfo()
 map_info.init_by_file(xodr_file)
 
-visualizer = lane_visualizer(width=20, height=20)
+visualizer = LaneVisualizer(width=20, height=20)
 visualizer.init(map_info, points)
 
 # 初始化规划器

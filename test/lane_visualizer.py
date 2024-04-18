@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 '''
-@File    :   lane_visualizer.py    
+@File    :   LaneVisualizer.py
 @Contact :   2540307049@qq.com
 @License :   (C)Copyright 2024-2025, sayo
 
@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from global_path_planner import *
 
 
-class lane_visualizer:
+class LaneVisualizer:
     """
     道路可视化类
     需使用init初始化
@@ -115,8 +115,8 @@ class lane_visualizer:
             center_point = lane_info.center_vertices  # 车道中心线散点序列
             random_index = random.randint(0, len(self.colors)-1)
             plt.scatter(left_point[0, 0], left_point[0, 1], s=self.point_size * 50, c=self.colors[random_index])
-            plt.scatter(left_point[:, 0], left_point[:, 1], s=self.point_size, c=self.colors[random_index])
-            plt.scatter(right_point[:, 0], right_point[:, 1], s=self.point_size, c=self.colors[random_index])
+            plt.plot(left_point[:, 0], left_point[:, 1], c=self.colors[random_index])
+            plt.plot(right_point[:, 0], right_point[:, 1], c=self.colors[random_index])
             plt.scatter(right_point[0, 0], right_point[0, 1], s=self.point_size * 50, c=self.colors[random_index])
 
             # 画多边形

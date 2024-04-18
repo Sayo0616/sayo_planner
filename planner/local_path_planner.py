@@ -9,14 +9,13 @@
 ------------      -------    --------    -----------
 2024/4/14 10:46   sayo      1.0         None
 '''
-import copy
 
+import copy
 import numpy as np
 
 from utils.observation import Observation, EgoStatus
 
 from map_info import *
-
 from const_var import *
 
 class LocalPathPlanner:
@@ -24,7 +23,8 @@ class LocalPathPlanner:
     局部路径规划类
     需要使用init方法进行初始化
     """
-    algorithms = ['dwa']  # 可使用的路径规划算法
+    algorithms = ['dwa']    # 可使用的路径规划算法
+    curve_type = ['sin']    # 可使用的变道曲线
 
     def __init__(self, map_info: MapInfo):
         """
@@ -36,38 +36,166 @@ class LocalPathPlanner:
         self.lanes_path = None  # 全局规划器生成的指引性车道路径
         self.dt = 0.1
         self.ego_status = None  # 主车当前状态
+        self.target_pos = None  # 目标点
 
         self.max_linear_velocity = MAX_LINEAR_VELOCITY  # 最大线速度，单位m/s
         self.max_rotation = MAX_ROTATION    # 最大前轮转角，单位rad
         self.max_acceleration = MAX_ACCELERATION
         self.simulate_time = SIMULATE_TIME  # 模拟预测时长
 
-        self.segmental_path = []  # 规划路径指引路径点的当前部分
+        self._segmental_path = []  # 规划路径指引路径点的当前部分
 
         self.current_lane = None    # 主车当前所处车道id
         self.previous_lane = None   # 主车之前所处的车道id
-        self.current_index = 0
+        # self.current_index = 0
 
-    def init(self, lanes_path, observation: Observation):
+        self.is_initialized = False
+        self.current_pos = None
+
+
+    def init(self, lanes_path, observation: Observation, task_info:dict):
         """
         初始化局部路径规划器
 
+        @param lanes_path: 指引车道id路径列表
         @param observation: 初始观测信息，Observation对象
+        @param task_info: 任务信息
+                        task_info:
+                        {
+                            "startPos": (float, float),
+                            "targetPos": (float, float),
+                            "waypoint": [],
+                            "dt": float
+                        }
         @return:
         """
         self.lanes_path = lanes_path
         self.observation = observation
         self.dt = observation.test_info['dt']
         self.ego_status = observation.ego_info
+        self.target_pos = task_info['targetPos']
 
         self.current_lane = self.previous_lane = self.lanes_path[0]
+        self.current_pos = task_info['startPos']
+
+        self.is_initialized = True
+
+        self.update_path()
+
+    def planning(self):
+        """
+        开始规划
+        @return:
+        """
+
+        self.update()
+
+    @property
+    def segmental_path(self):
+        """
+        返回分段路径的拷贝
+        @return:
+        """
+        return list(map(list, copy.deepcopy(self._segmental_path)))
+
+    def update(self):
+        """
+        更新状态
+        @return:
+        """
+        self.current_pos = self.observation.ego_info.x, self.observation.ego_info.y
+        located_lane_info = self.map_info.find_lane_located_reference(self.current_pos, self.current_lane)
+
+        if located_lane_info is not None and located_lane_info.lane_id != self.current_lane:
+            self.current_lane = located_lane_info.lane_id
+            self.update_path()
 
     def update_path(self):
-        for lane_id in self.lanes_path[self.current_index:self.current_index + 2]:
-            for vertex in self.map_info.lanes_dict[lane_id].center_vertices:
-                self.segmental_path.append(vertex)
+        """
+        根据当前所处车道与下一车道，更新局部路径
+        @return:
+        """
+        if not self.is_initialized:
+            raise Exception("you haven't initialized the planner, please call func 'init' first")
 
-    def vehicle_model(self, ego_status: EgoStatus, control_info: dict[str: float]) -> EgoStatus:
+        current_lane_info: LaneInfo = self.map_info.lanes_dict.get(self.current_lane)
+        current_index = self.lanes_path.index(self.current_lane)
+        next_index = min(current_index + 1, len(self.lanes_path) - 1)
+        next_lane_info: LaneInfo = self.map_info.lanes_dict.get(self.lanes_path[next_index])
+
+        # start_index = min(current_lane_info.center_vertices,
+        #                   key=lambda point_: cal_Euclidean_distance(point_, self.current_pos))
+        self._segmental_path = [self.current_pos]
+
+        # 当前车道也是下一车道（已到车道路径列表尾部）
+        if current_lane_info.lane_id == next_lane_info.lane_id:
+            end_vertex = min(current_lane_info.center_vertices, key=lambda point_: cal_Euclidean_distance(point_, self.target_pos))
+
+            for vertex in current_lane_info.center_vertices:
+                self._segmental_path.append(vertex)
+                if vertex[0] == end_vertex[0] and vertex[1] == end_vertex[1]:
+                    break
+            self._segmental_path.append(self.target_pos)
+
+        # 若下一车道是当前车道的后继车道
+        elif next_lane_info.lane_id in current_lane_info.successor_id:
+            for index in range(len(current_lane_info.center_vertices)-1):
+                self._segmental_path.append(current_lane_info.center_vertices[index])
+            for point in next_lane_info.center_vertices:
+                self._segmental_path.append(point)
+
+        # 若下一车道是当前车道的相邻车道
+        elif next_lane_info.lane_id in current_lane_info.adjacent_id:
+            self._segmental_path = self.change_lane(current_lane_info, next_lane_info)
+
+
+    def change_lane(self, current_lane_info, next_lane_info, curve_type='sin'):
+        """
+        换道轨迹
+        @param current_lane_info: 当前道路信息
+        @param next_lane_info: 相邻车道信息
+        @param curve_type: 变道曲线类型，默认 'sin'，
+                option: ['sin']
+        @return: 变道轨迹点
+        """
+        if curve_type not in self.curve_type:
+            raise ValueError(f'there is not a curve named {curve_type}, please choose from {self.curve_type}')
+        curve_points = []
+        if curve_type == 'sin':
+             curve_points = self._sin_curve_path(current_lane_info, next_lane_info, self.ego_status)
+        return curve_points
+
+    def _sin_curve_path(self, current_lane_info: LaneInfo, next_lane_info: LaneInfo, ego_info: EgoStatus):
+        """
+        正弦函数换道轨迹计算
+
+        @param current_lane_info: 当前道路信息
+        @param next_lane_info: 下一道路信息
+        @param ego_info: 主车状态信息
+        @return:
+        """
+
+        L = ego_info.v * TIME_CHANGE_LANE   # 换道切向长度，正弦函数的1/2周期
+        d = cal_Euclidean_distance(current_lane_info.center_vertices[len(current_lane_info.center_vertices)//2],
+                                   next_lane_info.center_vertices[len(next_lane_info.center_vertices)//2])  # 两车道中心线间距,2倍振幅
+
+        theta = 0.
+        for polygon in current_lane_info.polygons:
+            if point_in_polygon(self.current_pos, polygon):
+                theta = cal_theta((polygon[1][0] - polygon[0][0], polygon[1][1] - polygon[0][1]))
+
+        local_coordinate = LocalCoordinate(self.current_pos, theta)
+
+        def local_sin_curve_func(x_):
+            return d / 2. * (math.sin(2 * math.pi / L * x_ - math.pi / 2) + 1.)
+
+        global_sin_curve = []
+        for x in range(int(L / 2)):
+            global_sin_curve.append(list(local_coordinate.local_to_global([x, local_sin_curve_func(x)])))
+
+        return global_sin_curve
+
+    def vehicle_model(self, ego_status: EgoStatus, control_info: dict) -> EgoStatus:
         """
         车辆运动模型
         @param ego_status: 主车状态
@@ -96,7 +224,7 @@ class LocalPathPlanner:
 
         return new_ego_status
 
-    def simulate_trajectory(self, control_info: Dict[str: float]) -> List[EgoStatus]:
+    def simulate_trajectory(self, control_info: Dict) -> List[EgoStatus]:
         """
         轨迹预测模拟
         @param control_info: 控制信息
@@ -106,6 +234,9 @@ class LocalPathPlanner:
                 }
         @return: 主车状态列表list[EgoStatus]
         """
+        if not self.is_initialized:
+            raise Exception("you haven't initialized the planner, please call func 'init' first")
+
         trajectory = [self.ego_status]
         for i in range(math.ceil(self.simulate_time / self.dt)):
             new_ego_status = self.vehicle_model(trajectory[-1], control_info)
@@ -114,7 +245,7 @@ class LocalPathPlanner:
         return trajectory
 
     def calculate_total_cost(self, trajectory):
-
+        pass
 
     def calculate_match_cost(self, trajectory):
 
@@ -126,7 +257,7 @@ class LocalPathPlanner:
 
         distance = cal_curve_distance_interpolation(curve1, curve2)
     def calculate_comfy_cost(self, trajectory):
-
+        pass
     def calculate_TTC_cost(self, trajectory):
-
+        pass
 

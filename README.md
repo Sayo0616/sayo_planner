@@ -11,8 +11,10 @@
     数学计算方法
   * **const_var.py:**  
   常量定义文件  
-  * **global_path_planner.py:**
+  * **global_path_planner.py:**  
   全局指引路径规划器
+  * **local_path_planner:**  
+  局部路径规划器
   * **map_info:**   
     结构化地图信息相关类
 * **sample_reference_code**  
@@ -21,6 +23,10 @@
   射线法判断车道原理示例
   + **A_star.py:**
   A*算法示例
+  + **DWA.py:**  
+  DWA算法示例
+  + **linear_interpolation.py:**  
+  线性插值计算吻合度示例
 * **test**  
 测试代码目录
   * **global_path_planner_test.py:**  

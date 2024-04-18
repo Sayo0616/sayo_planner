@@ -1,4 +1,4 @@
-from lane_visualizer import lane_visualizer
+from lane_visualizer import LaneVisualizer
 import time
 from map_info import MapInfo
 
@@ -15,7 +15,7 @@ target_point = points[1][:2]
 map_info = MapInfo()
 map_info.init_by_file(xodr_file)
 
-visualizer = lane_visualizer(width=20, height=20)
+visualizer = LaneVisualizer(width=20, height=20)
 visualizer.init(map_info, points)
 
 visualizer.visualize(if_plot_polygons=True)
