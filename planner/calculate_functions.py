@@ -121,3 +121,69 @@ def cal_curve_distance_interpolation(curve1, curve2) -> float:
 
     # 计算两条曲线的吻合程度
     return np.sum((y_interp1 - y_interp2) ** 2)  # 计算平方差
+
+
+def central_difference(values: list, dt: float, index: int = 1) -> float:
+    """
+    使用中心差分法计算导数
+    @param values: 数值列表
+    @param dt: 时间微元
+    @param index: 时刻索引，大于0，小于len(values)
+    @return: 所求导数
+    """
+    if index < 1 or index >= len(values):
+        raise ValueError("index out of range, must be between 1 and len(values)-1")
+    gradient = (values[index + 1] - values[index - 1]) / (2 * dt)
+    return gradient
+
+
+def cal_lateral_acceleration(v: float, k: float) -> float:
+    """
+    计算横向加速度
+    @param v: 纵向加速度（沿行驶方向）
+    @param k: 曲率
+    @return: 横向加速度
+    """
+    return v ** 2 * k
+
+
+def cal_curvature(x, y):
+    """
+    计算曲线的曲率
+
+    @param x: array_like
+        曲线的 x 坐标数组
+    @param y: array_like
+        曲线的 y 坐标数组
+    @return kappa : array_like
+        曲线的曲率数组
+    """
+    # 计算一阶导数
+    dx_dt = np.gradient(x)
+    dy_dt = np.gradient(y)
+
+    # 计算二阶导数
+    d2x_dt2 = np.gradient(dx_dt)
+    d2y_dt2 = np.gradient(dy_dt)
+
+    # 计算曲率
+    numerator = dx_dt * d2y_dt2 - dy_dt * d2x_dt2
+    denominator = np.sqrt(dx_dt**2 + dy_dt**2)**3
+
+    kappa = numerator / denominator
+
+    return kappa
+
+
+def cal_yaw_velocity(v: float, curvature: float) -> float:
+    """
+    计算横摆角速度
+    @param v: 线速度
+    @param curvature: 曲率
+    @return: 横摆角速度
+    """
+    return v * curvature
+
+
+def cal_ttc():
+    pass

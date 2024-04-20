@@ -103,14 +103,14 @@ class LaneInfo:
     def _cal_distance_random_sampling(self) -> float:
         """
         随机采样求点间距
-        采样次数为 SAMPLING_COUNT，可在const_var.py文件中设置，默认为4
+        采样次数为 SAMPLING_COUNT_LANE_WIDTH，可在const_var.py文件中设置，默认为4
         @return: 采样平均点间距
         """
         distance = 0.
-        for i in range(SAMPLING_COUNT):
+        for i in range(SAMPLING_COUNT_LANE_WIDTH):
             random_index = int(random.random() * (len(self.center_vertices)-1))
             distance += cal_Euclidean_distance(self.center_vertices[random_index], self.center_vertices[random_index + 1])     # 点单元的距离
-        return distance / SAMPLING_COUNT
+        return distance / SAMPLING_COUNT_LANE_WIDTH
 
     def add_connected_lane(self, connected_lane = None, connection_type: str = "predecessor") -> bool:
         """

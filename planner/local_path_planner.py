@@ -18,12 +18,13 @@ from utils.observation import Observation, EgoStatus
 from map_info import *
 from const_var import *
 
+
 class LocalPathPlanner:
     """
     局部路径规划类
     需要使用init方法进行初始化
     """
-    algorithms = ['dwa']    # 可使用的路径规划算法
+    algorithms = ['dwa']    # 路径规划算法
     curve_type = ['sin']    # 可使用的变道曲线
 
     def __init__(self, map_info: MapInfo):
@@ -42,8 +43,10 @@ class LocalPathPlanner:
         self.max_rotation = MAX_ROTATION    # 最大前轮转角，单位rad
         self.max_acceleration = MAX_ACCELERATION
         self.simulate_time = SIMULATE_TIME  # 模拟预测时长
+        self.sample_count = SAMPLING_COUNT_DWA  # 采样次数
 
         self._segmental_path = []  # 规划路径指引路径点的当前部分
+        self._best_control_info = None     # 最佳控制信息
 
         self.current_lane = None    # 主车当前所处车道id
         self.previous_lane = None   # 主车之前所处的车道id
@@ -52,8 +55,10 @@ class LocalPathPlanner:
         self.is_initialized = False
         self.current_pos = None
 
+        self.simulate_trajectory_list = []  # 模拟路径列表
+        self.best_simulate_trajectory = None    # 最佳模拟路径点
 
-    def init(self, lanes_path, observation: Observation, task_info:dict):
+    def init(self, lanes_path, observation: Observation, task_info: dict):
         """
         初始化局部路径规划器
 
@@ -85,10 +90,61 @@ class LocalPathPlanner:
     def planning(self):
         """
         开始规划
-        @return:
+        @return: 最佳控制信息 best_control_info = {
+                    'rotation': float,
+                    'acceleration': float
+                }
         """
 
         self.update()
+
+        # acceleration_range = [-self.max_acceleration, self.max_acceleration]
+        # rotation_range = [-self.max_rotation, self.max_rotation]
+
+        # 采样
+        acceleration_space = np.linspace(-self.max_acceleration, self.max_acceleration, self.sample_count)
+        rotation_space = np.linspace(-self.max_rotation, self.max_rotation, self.sample_count)
+
+        best_control_info = None
+        min_cost = float('inf')
+
+        match_cost_list = []
+        comfy_cost_list = []
+        ttc_cost_list = []
+
+        control_info_list = []
+        self.simulate_trajectory_list = []
+
+        for acceleration in acceleration_space:
+            for rotation in rotation_space:
+                control_info = {"acceleration": acceleration, "rotation": rotation}
+                trajectory = self.simulate_trajectory(control_info)
+                control_info_list.append(control_info)
+
+                self.simulate_trajectory_list.append(list([ego_info.x, ego_info.y] for ego_info in trajectory))
+
+                match_cost_list.append(self.calculate_match_cost(trajectory))
+                comfy_cost_list.append(self.calculate_comfy_cost(trajectory))
+                ttc_cost_list.append(self.calculate_ttc_cost(trajectory))
+
+        match_cost_list = self.normalize_cost(match_cost_list)
+        comfy_cost_list = self.normalize_cost(comfy_cost_list)
+        ttc_cost_list = self.normalize_cost(ttc_cost_list)
+
+        for index in range(len(control_info_list)):
+            total_cost = (MATCH_COEFFICIENT * match_cost_list[index] +
+                          COMFY_COEFFICIENT * comfy_cost_list[index] +
+                          TTC_COEFFICIENT * ttc_cost_list[index])
+            if total_cost < min_cost:
+                min_cost = total_cost
+                best_control_info = control_info_list[index]
+        self._best_control_info = best_control_info
+
+        return best_control_info
+
+    @property
+    def best_control_info(self):
+        return self._best_control_info
 
     @property
     def segmental_path(self):
@@ -147,7 +203,6 @@ class LocalPathPlanner:
         # 若下一车道是当前车道的相邻车道
         elif next_lane_info.lane_id in current_lane_info.adjacent_id:
             self._segmental_path = self.change_lane(current_lane_info, next_lane_info)
-
 
     def change_lane(self, current_lane_info, next_lane_info, curve_type='sin'):
         """
@@ -244,20 +299,92 @@ class LocalPathPlanner:
 
         return trajectory
 
-    def calculate_total_cost(self, trajectory):
-        pass
-
-    def calculate_match_cost(self, trajectory):
-
+    def calculate_match_cost(self, trajectory: List[EgoStatus]) -> float:
+        """
+        计算模拟路径与规划路径的拟合程度，拟合程度越高，返回值越小
+        @param trajectory: 模拟路径列表（主车信息列表）
+        @return: 拟合程度
+        """
         curve1 = []     # 预测轨迹线
         for ego_status in trajectory:
             curve1.append([ego_status.x, ego_status.y])
 
-        curve2 = []     # 全局路径线
+        curve2 = self._segmental_path     # 全局路径线
 
-        distance = cal_curve_distance_interpolation(curve1, curve2)
-    def calculate_comfy_cost(self, trajectory):
-        pass
-    def calculate_TTC_cost(self, trajectory):
+        return cal_curve_distance_interpolation(curve1, curve2)
+
+    def calculate_comfy_cost(self, trajectory: List[EgoStatus]) -> float:
+        """
+        计算模拟路径的舒适成本，舒适性越好，返回值越小
+        分为：
+            1.纵向加速度
+            2.横向加速度
+            3.纵向加加速度
+            4.横向加加速度
+            5.横摆角速度
+        @param trajectory: 模拟路径列表（主车信息列表）
+        @return: 舒适成本
+        """
+
+        comfy_cost = 0.
+
+        lateral_acceleration_list = []
+
+        x_list = [ego_info.x for ego_info in trajectory]
+        y_list = [ego_info.y for ego_info in trajectory]
+        curvature_list = cal_curvature(x_list, y_list)  # 曲率列表
+
+        for index in range(0, len(trajectory)):
+            ego_status = trajectory[index]
+            # 纵向加速度舒适成本
+            if abs(ego_status.a) > COMFY_ACCELERATION_THRESHOLD:
+                comfy_cost += (abs(ego_status.a) - COMFY_ACCELERATION_THRESHOLD) * self.dt
+
+            # 横向加速度舒适成本
+            lateral_acceleration = cal_lateral_acceleration(ego_status.v, curvature_list[index])
+            lateral_acceleration_list.append(lateral_acceleration)
+            if abs(lateral_acceleration) > COMFY_LATERAL_ACCELERATION_THRESHOLD:
+                comfy_cost += (abs(lateral_acceleration) - COMFY_LATERAL_ACCELERATION_THRESHOLD) * self.dt
+
+            # 横摆角速度舒适成本
+            yaw_velocity = cal_yaw_velocity(ego_status.v, curvature_list[index])
+            if yaw_velocity > COMFY_YAW_VELOCITY_THRESHOLD:
+                comfy_cost += (yaw_velocity - COMFY_YAW_VELOCITY_THRESHOLD) * self.dt
+
+        for index in range(1, len(trajectory)-1):
+            ego_status = trajectory[index]
+
+            # 纵向加加速度舒适成本
+            jerk = central_difference([status.a for status in trajectory], self.dt, index)
+            if abs(jerk) > COMFY_JERK_THRESHOLD:
+                comfy_cost += (abs(jerk) - COMFY_JERK_THRESHOLD) * self.dt
+
+            # 横向加加速度舒适成本
+            lateral_jerk = central_difference(lateral_acceleration_list, self.dt, index)
+            if abs(lateral_jerk) > COMFY_JERK_THRESHOLD:
+                comfy_cost += (abs(lateral_jerk) - COMFY_JERK_THRESHOLD) * self.dt
+
+        return comfy_cost
+
+
+    def calculate_ttc_cost(self, trajectory: List[EgoStatus]):
         pass
 
+    @staticmethod
+    def normalize_cost(costs: list):
+        """
+        对成本列表进行归一化
+        @param costs: 成本列表
+        @return: 归一化后的成本列表
+        """
+        max_cost = max(costs)
+        count = 0
+        while max_cost > 1.:
+            max_cost /= 10.
+            count += 1
+
+        normalized_costs = []
+        for cost in costs:
+            normalized_costs.append(cost * math.pow(-10, count))
+
+        return normalized_costs
