@@ -29,6 +29,7 @@ COMFY_JERK_THRESHOLD = 6.     # 纵向加加速度舒适阈值数值绝对值，
 COMFY_LATERAL_ACCELERATION_THRESHOLD = 0.5     # 横向加速度舒适阈值数值绝对值，单位m/s^2
 COMFY_LATERAL_JERK_THRESHOLD = 1  # 横向加加速度舒适阈值数值绝对值，单位m/s^3
 COMFY_YAW_VELOCITY_THRESHOLD = 0.5    # 横摆角速度舒适阈值，单位rad/s
+TTC_THRESHOLD = 2.  # ttc阈值
 
 """默认值"""
 LOCAL_PATH_PLANNER_ALGORITHM_DEFAULT = 'dwa'     # 局部路径规划默认算法
@@ -41,3 +42,5 @@ SAMPLING_COUNT_DWA = 10     # DWA算法采样次数
 MATCH_COEFFICIENT = 1.  # 匹配拟合成本系数
 COMFY_COEFFICIENT = 1.  # 舒适度成本系数
 TTC_COEFFICIENT = 1.    # ttc成本系数
+POWER_EXPONENTIAL = 2   # 成本加强指数
+

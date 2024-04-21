@@ -13,7 +13,7 @@
 import copy
 import numpy as np
 
-from utils.observation import Observation, EgoStatus
+from utils.observation import Observation, EgoStatus, ObjectStatus
 
 from map_info import *
 from const_var import *
@@ -132,9 +132,9 @@ class LocalPathPlanner:
         ttc_cost_list = self.normalize_cost(ttc_cost_list)
 
         for index in range(len(control_info_list)):
-            total_cost = (MATCH_COEFFICIENT * match_cost_list[index] +
-                          COMFY_COEFFICIENT * comfy_cost_list[index] +
-                          TTC_COEFFICIENT * ttc_cost_list[index])
+            total_cost = (MATCH_COEFFICIENT * match_cost_list[index] ** POWER_EXPONENTIAL +
+                          COMFY_COEFFICIENT * comfy_cost_list[index] ** POWER_EXPONENTIAL +
+                          TTC_COEFFICIENT * ttc_cost_list[index] ** POWER_EXPONENTIAL)
             if total_cost < min_cost:
                 min_cost = total_cost
                 best_control_info = control_info_list[index]
@@ -250,34 +250,48 @@ class LocalPathPlanner:
 
         return global_sin_curve
 
-    def vehicle_model(self, ego_status: EgoStatus, control_info: dict) -> EgoStatus:
+    def vehicle_model(self, object_status: ObjectStatus, control_info: dict) -> ObjectStatus:
         """
         车辆运动模型
-        @param ego_status: 主车状态
+        @param object_status: 车辆状态
         @param control_info: 控制信息
                 {
                     'rotation': float,
                     'acceleration': float
                 }
-        @return: 更新后的主车信息
+        @return: 更新后的车辆信息
         """
 
-        v = ego_status.v
-        yaw = ego_status.yaw
-        length = ego_status.length
+        v = object_status.v
+        yaw = object_status.yaw
+        length = object_status.length
         dt = self.dt
         rot = control_info['rotation']
         acc = control_info['acceleration']
 
-        new_ego_status = copy.deepcopy(ego_status)
-        new_ego_status.x += v * np.cos(yaw) * dt
-        new_ego_status.y += v * np.sin(yaw) * dt
-        new_ego_status.yaw += v / length * 1.7 * np.tan(rot) * dt
-        new_ego_status.v = max(0, v + acc * dt)
-        new_ego_status.a = acc
-        new_ego_status.rot = rot
+        new_object_status = copy.deepcopy(object_status)
+        new_object_status.x += v * np.cos(yaw) * dt
+        new_object_status.y += v * np.sin(yaw) * dt
+        new_object_status.yaw += v / length * 1.7 * np.tan(rot) * dt
+        new_object_status.v = max(0, v + acc * dt)
 
-        return new_ego_status
+        return new_object_status
+
+    def background_obj_simulate_model(self, object_status: ObjectStatus) -> ObjectStatus:
+        """
+        背景物体模拟运动模型，忽略控制信息
+        @param object_status: 背景物体状态信息
+        @return: 更新后的物体状态信息
+        """
+        dt = self.dt
+        v = object_status.v
+        yaw = object_status.yaw
+
+        new_object_status = copy.deepcopy(object_status)
+        new_object_status.x += v * np.cos(yaw) * dt
+        new_object_status.y += v * np.sin(yaw) * dt
+
+        return new_object_status
 
     def simulate_trajectory(self, control_info: Dict) -> List[EgoStatus]:
         """
@@ -367,8 +381,46 @@ class LocalPathPlanner:
         return comfy_cost
 
 
+    def _judge_threat(self, obj_status: ObjectStatus) -> bool:
+        """
+        判断该物体是否对主车构成威胁
+        条件（或）：
+            1.距离在范围内
+            2.所处相同车道或临近车道
+        @param obj_status: 物体状态信息
+        @return: 是：True; 否：False
+        """
+
+        # 若直线距离小于 当前车速 * 模拟时间 * 1.5
+        if cal_Euclidean_distance([self.ego_status.x, self.ego_status.y],
+                                  [obj_status.x, obj_status.y]) < SIMULATE_TIME * 1.5 * self.ego_status.v:
+            return True
+        # 若所处车道为主车的临近车道或相同车道
+        obj_lane = self.map_info.find_lane_located_reference([obj_status.x, obj_status.y], self.current_lane)
+        if  obj_lane is not None:
+            return True
+
+        return False
+
     def calculate_ttc_cost(self, trajectory: List[EgoStatus]):
-        pass
+        # 加载背景车状态信息
+        potential_object_status_list = []
+        for obj_type in self.observation.object_info:
+            for obj_name, obj_status in self.observation.object_info[obj_type].items():
+                # 判断是否对主车构成威胁
+                if self._judge_threat(obj_status):
+                    potential_object_status_list.append(obj_status)
+
+        ttc_cost = 0.
+        for ego_status in trajectory[1:]:
+            for obj_status in potential_object_status_list:
+                obj_status = self.background_obj_simulate_model(obj_status)
+                info1 = [ego_status.x, ego_status.y, ego_status.v]
+                info2 = [obj_status.x, obj_status.y, obj_status.v]
+                ttc_cost += TTC_THRESHOLD / cal_ttc(info1, info2)   # 反比函数倒转ttc值转化为成本
+        ttc_cost /= len(potential_object_status_list)
+
+        return ttc_cost
 
     @staticmethod
     def normalize_cost(costs: list):

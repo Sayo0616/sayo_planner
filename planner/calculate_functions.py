@@ -185,5 +185,16 @@ def cal_yaw_velocity(v: float, curvature: float) -> float:
     return v * curvature
 
 
-def cal_ttc():
-    pass
+def cal_ttc(info1: list, info2: list) -> float:
+    """
+    计算ttc（time to collision）
+    @param info1: 物体1信息列表
+    @param info2: 物体2信息列表
+    info = [x, y, v, yaw]
+    @return:
+    """
+    distance = cal_Euclidean_distance(info1[:2], info2[:2])
+    relative_velocity = math.sqrt((info2[2] * math.cos(info2[3]) - info1[2] * math.cos(info1[3]))**2 +
+                         (info2[2] * math.sin(info2[3]) - info1[2] * math.sin(info1[3]))**2)
+    return distance / relative_velocity
+

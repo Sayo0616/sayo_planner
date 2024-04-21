@@ -256,10 +256,7 @@ class MapInfo:
         pre_lane: LaneInfo = self.lanes_dict.get(pre_lane_id)
 
         if pre_lane is not None:
-            for polygon in pre_lane.polygons:
-                if point_in_polygon(point, polygon):
-                    return pre_lane
-            for label, lane_info in pre_lane.get_access_lanes():
+            for label, lane_info in pre_lane.get_access_lanes() + [pre_lane] + pre_lane.predecessors:
                 for polygon in lane_info.polygons:
                     if point_in_polygon(point, polygon):
                         return lane_info
