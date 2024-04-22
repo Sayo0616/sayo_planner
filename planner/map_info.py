@@ -18,8 +18,8 @@ from deprecated.sphinx import deprecated
 from utils.opendrive2discretenet.discrete_network import *
 from utils.opendrive2discretenet import parse_opendrive
 
-from planner.sayo_planner.planner.calculate_functions import *
-from planner.sayo_planner.planner.const_var import *
+from calculate_functions import *
+from const_var import *
 
 
 class LaneInfo:
@@ -112,7 +112,7 @@ class LaneInfo:
             distance += cal_Euclidean_distance(self.center_vertices[random_index], self.center_vertices[random_index + 1])     # 点单元的距离
         return distance / SAMPLING_COUNT_LANE_WIDTH
 
-    def add_connected_lane(self, connected_lane = None, connection_type: str = "predecessor") -> bool:
+    def add_connected_lane(self, connected_lane=None, connection_type: str = "predecessor") -> bool:
         """
         添加连接车道LaneInfo对象
         @param connected_lane: 连接车道LaneInfo对象列表
@@ -256,7 +256,12 @@ class MapInfo:
         pre_lane: LaneInfo = self.lanes_dict.get(pre_lane_id)
 
         if pre_lane is not None:
-            for label, lane_info in pre_lane.get_access_lanes() + [pre_lane] + pre_lane.predecessors:
+
+            access_label_lanes = pre_lane.get_access_lanes()
+            access_lanes = []
+            for lane in access_label_lanes:
+                access_lanes.append(lane[1])
+            for lane_info in access_lanes + [pre_lane] + pre_lane.predecessors:
                 for polygon in lane_info.polygons:
                     if point_in_polygon(point, polygon):
                         return lane_info

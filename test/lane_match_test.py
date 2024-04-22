@@ -4,9 +4,11 @@ from map_info import MapInfo
 
 xodr_file = "../../../scenario/fragment/0_76_merge_82/0_76_merge_82.xodr"
 
+xodr_file = 'H:\\competition\\OnSite\\first_track\\onsite-structured-test-3.1.0\\scenario\\fragment\\0_231_merge_236\\0_231_merge_236.xodr' #"../../../scenario/fragment/0_76_merge_82/0_76_merge_82.xodr"
+
 points = [
-    [1140, 970, "start", "blue"],   # 起始点
-    [1004, 960, "target", "red"]   # 目标点
+    [1136, 970, "start", "blue"],   # 起始点
+    [1008, 967, "target", "red"]   # 目标点
 ]
 
 start_point = points[0][:2]

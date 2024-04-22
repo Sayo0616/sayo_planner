@@ -14,6 +14,7 @@ import heapq
 from map_info import *
 from const_var import HEURISTIC_DISTANCE_TYPE_DEFAULT, GLOBAl_PATH_PLANNER_ALGORITHM_DEFAULT
 
+
 class LaneNode:
     """
     道路节点
@@ -99,9 +100,11 @@ class LaneNode:
     @property
     def total_cost(self):
         """
-        返回最近一次使用cal_total_cost()方法计算后的结果，若没有使用过，则返回None
+        返回最近一次使用cal_total_cost()方法计算后的结果，若没有使用过，则报错
         @return: 总成本
         """
+        if self._total_cost is None:
+            raise ValueError("total_cost is None, you must call cal_total_cost() first")
         return self._total_cost
 
 
@@ -112,13 +115,12 @@ class GlobalPathPlanner:
     """
     algorithms = ['A_star', 'A*']  # 可使用的路径规划算法
 
-    def __init__(self, map_info: MapInfo):
+    def __init__(self):
         """
         初始化规划器地图信息
-        @param map_info: 地图信息
         """
 
-        self.map_info = map_info  # 结构化地图信息
+        self.map_info = None  # 结构化地图信息
         self.task_info = {}     # 任务信息
 
         self.start_lanes = []  # 开始车道信息列表[LaneInfo,]
@@ -127,10 +129,11 @@ class GlobalPathPlanner:
         self.lanes_path = []    # 规划路径途经车道
         # self.points_path = []    # 规划路径点
 
-    def init(self, task_info: dict):
+    def init(self, map_info: MapInfo, task_info: dict):
         """
         初始化全局路径规划器任务
 
+        @param map_info: 地图信息
         @param task_info: 任务信息
                         task_info:
                         {
@@ -142,25 +145,27 @@ class GlobalPathPlanner:
                         
         @return:
         """
+        self.map_info = map_info
         self.task_info = task_info
         self.start_lanes = self.map_info.find_lanes_located(task_info['startPos'])
-        self.target_lanes = self.map_info.find_lanes_located(task_info['targetPos'])
+        self.target_lanes = self.map_info.find_lanes_located([(task_info['targetPos'][0][0]+task_info['targetPos'][1][0])/2.,
+                                                              (task_info['targetPos'][0][1]+task_info['targetPos'][1][1])/2.])
 
-    def planning(self, algorithm=GLOBAl_PATH_PLANNER_ALGORITHM_DEFAULT) -> (list, list):
+    def planning(self, algorithm=GLOBAl_PATH_PLANNER_ALGORITHM_DEFAULT) -> List[str]:
         """
         规划路径
         @param algorithm: 选择的规划算法
             option:['A_star'/'A*',]
-        @return: 路径车道id列表, 路径点列表
+        @return: 路径车道id列表
         """
         if algorithm not in self.algorithms:
             raise ValueError('there is not an algorithm named {} in {}'.format(algorithm, self.algorithms))
         if algorithm == 'A_star' or algorithm == 'A*':
-            self.lanes_path = self._planning_A_star()
+            self.lanes_path = self._planning_a_star()
         # self._to_points_path()
-        return self.lanes_path#, self.points_path
+        return self.lanes_path
 
-    def _planning_A_star(self) -> List[LaneInfo]:
+    def _planning_a_star(self) -> List[str]:
         """
         A*算法规划
         @return: 道路id列表
@@ -201,7 +206,7 @@ class GlobalPathPlanner:
                 else:
                     heapq.heappush(open_list, new_node)
 
-        return None     # 未找到路径
+        return list()     # 未找到路径
 
     # def _to_points_path(self):
     #     start_point = self.task_info['startPos']
@@ -222,7 +227,6 @@ class GlobalPathPlanner:
     #
     #     for lane_id in self.lanes_path[1:-1]:
     #
-
 
     @staticmethod
     def cal_current_cost(current_node: LaneNode, next_lane: list):
@@ -259,8 +263,8 @@ if __name__ == '__main__':
                             "dt": 0.1
                         }
 
-    global_planner = GlobalPathPlanner(map_info=map_info)
-    global_planner.init(task_info=task_info)
+    global_planner = GlobalPathPlanner()
+    global_planner.init(map_info=map_info, task_info=task_info)
     lane_paths = global_planner.planning()
     if lane_paths is None:
         print("No path")

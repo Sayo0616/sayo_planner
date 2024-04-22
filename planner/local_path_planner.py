@@ -22,17 +22,16 @@ from const_var import *
 class LocalPathPlanner:
     """
     局部路径规划类
-    需要使用init方法进行初始化
+    需要使用init方法进行初始化，且使用load_task方法加载任务
     """
     algorithms = ['dwa']    # 路径规划算法
     curve_type = ['sin']    # 可使用的变道曲线
 
-    def __init__(self, map_info: MapInfo):
+    def __init__(self):
         """
-        初始化局部路径规划器与地图信息
-        @param map_info: 结构化地图信息
+        初始化空局部路径规划器
         """
-        self.map_info = map_info  # 结构化地图信息
+        self.map_info = None  # 结构化地图信息
         self.observation = None     # 观测信息
         self.lanes_path = None  # 全局规划器生成的指引性车道路径
         self.dt = 0.1
@@ -58,12 +57,20 @@ class LocalPathPlanner:
         self.simulate_trajectory_list = []  # 模拟路径列表
         self.best_simulate_trajectory = None    # 最佳模拟路径点
 
-    def init(self, lanes_path, observation: Observation, task_info: dict):
+    def init(self, map_info: MapInfo):
         """
-        初始化局部路径规划器
+        初始化局部路径规划器的地图信息
 
+        @param map_info: 地图信息
+        @return:
+        """
+
+        self.map_info = map_info
+
+    def load_task(self, lanes_path, task_info: dict):
+        """
+        加载任务信息
         @param lanes_path: 指引车道id路径列表
-        @param observation: 初始观测信息，Observation对象
         @param task_info: 任务信息
                         task_info:
                         {
@@ -74,20 +81,20 @@ class LocalPathPlanner:
                         }
         @return:
         """
+
         self.lanes_path = lanes_path
-        self.observation = observation
-        self.dt = observation.test_info['dt']
-        self.ego_status = observation.ego_info
-        self.target_pos = task_info['targetPos']
+        self.dt = task_info['dt']
+        self.target_pos = [sum(task_info['targetPos'][:][0])/2.,
+                            sum(task_info['targetPos'][:][1])/2.]
 
         self.current_lane = self.previous_lane = self.lanes_path[0]
         self.current_pos = task_info['startPos']
 
         self.is_initialized = True
 
-        self.update_path()
+        # self.update_path()
 
-    def planning(self):
+    def planning(self, observation: Observation) -> dict:
         """
         开始规划
         @return: 最佳控制信息 best_control_info = {
@@ -96,7 +103,7 @@ class LocalPathPlanner:
                 }
         """
 
-        self.update()
+        self.update(observation=observation)
 
         # acceleration_range = [-self.max_acceleration, self.max_acceleration]
         # rotation_range = [-self.max_rotation, self.max_rotation]
@@ -154,15 +161,18 @@ class LocalPathPlanner:
         """
         return list(map(list, copy.deepcopy(self._segmental_path)))
 
-    def update(self):
+    def update(self, observation: Observation):
         """
         更新状态
         @return:
         """
+        self.observation = observation
+        self.ego_status = observation.ego_info
         self.current_pos = self.observation.ego_info.x, self.observation.ego_info.y
         located_lane_info = self.map_info.find_lane_located_reference(self.current_pos, self.current_lane)
 
-        if located_lane_info is not None and located_lane_info.lane_id != self.current_lane:
+        if (located_lane_info is not None and located_lane_info.lane_id != self.current_lane
+                or len(self.segmental_path) == 0):
             self.current_lane = located_lane_info.lane_id
             self.update_path()
 
@@ -323,7 +333,7 @@ class LocalPathPlanner:
         for ego_status in trajectory:
             curve1.append([ego_status.x, ego_status.y])
 
-        curve2 = self._segmental_path     # 全局路径线
+        curve2 = self._segmental_path     # 参考路径线
 
         return cal_curve_distance_interpolation(curve1, curve2)
 
