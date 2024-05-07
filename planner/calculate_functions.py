@@ -1,6 +1,7 @@
 import math
 import numpy as np
 from scipy.interpolate import interp1d
+from typing import Callable
 
 def cal_Euclidean_distance(pos1, pos2)-> float:
     """
@@ -101,10 +102,12 @@ def cal_curve_distance_interpolation(curve1, curve2) -> float:
     @return: 偏差值
     """
 
-    x_data1 = np.array(curve1[:0])
-    y_data1 = np.array(curve1[:1])
-    x_data2 = np.array(curve2[:0])
-    y_data2 = np.array(curve2[:1])
+    curve1 = np.array(curve1)
+    curve2 = np.array(curve2)
+    x_data1 = np.array(curve1[:, 0])
+    y_data1 = np.array(curve1[:, 1])
+    x_data2 = np.array(curve2[:, 0])
+    y_data2 = np.array(curve2[:, 1])
 
     # 确定插值的范围不超出原始数据的范围
     x_min = max(min(x_data1), min(x_data2))
@@ -198,3 +201,31 @@ def cal_ttc(info1: list, info2: list) -> float:
                          (info2[2] * math.sin(info2[3]) - info1[2] * math.sin(info1[3]))**2)
     return distance / relative_velocity
 
+
+def cal_dtw_distance(list1: list, list2: list, distance_func: Callable = cal_Euclidean_distance) -> float:
+    """
+    动态时间规整算法求两列表数据拟合度
+    @param list1: 数据列表1
+    @param list2: 数据列表2
+    @param distance_func: 列表数据元距离计算函数
+    @return: 两数据列表的距离（拟合度），值越小，拟合度越高
+    """
+
+    n, m = len(list1), len(list2)
+
+    # 创建距离矩阵并初始化
+    distance_matrix = np.zeros((n + 1, m + 1))
+    for i in range(1, n + 1):
+        distance_matrix[i][0] = float('inf')
+    for j in range(1, m + 1):
+        distance_matrix[0][j] = float('inf')
+    distance_matrix[0][0] = 0
+
+    # 计算动态规划矩阵
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            cost = distance_func(list1[i - 1], list2[j-1])
+            distance_matrix[i][j] = cost + min(distance_matrix[i - 1][j], distance_matrix[i][j - 1],
+                                               distance_matrix[i - 1][j - 1])
+
+    return distance_matrix[n][m]

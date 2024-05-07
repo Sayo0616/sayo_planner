@@ -33,13 +33,15 @@ TTC_THRESHOLD = 2.  # ttc阈值
 
 """默认值"""
 LOCAL_PATH_PLANNER_ALGORITHM_DEFAULT = 'dwa'     # 局部路径规划默认算法
-SIMULATE_TIME = 5.  # 模拟预测时长，单位s
+SIMULATE_TIME = 4.  # 模拟预测时长，单位s
+SIMULATE_POINT_NUM = 20     # 模拟路径点的个数
 CURVE_CHANGE_LANE_DEFAULT = 'sin'   # 换道默认曲线
 TIME_CHANGE_LANE = 3.   # 换道时间，单位s
-SAMPLING_COUNT_DWA = 10     # DWA算法采样次数
+SAMPLING_COUNT_ACCELERATION = 20     # DWA算法加速度采样次数
+SAMPLING_COUNT_ROTATION = 10     # DWA算法前轮转角采样次数
 
 """成本系数"""
-MATCH_COEFFICIENT = 1.  # 匹配拟合成本系数
+MATCH_COEFFICIENT = 2.  # 匹配拟合成本系数
 COMFY_COEFFICIENT = 1.  # 舒适度成本系数
 TTC_COEFFICIENT = 1.    # ttc成本系数
 POWER_EXPONENTIAL = 2   # 成本加强指数

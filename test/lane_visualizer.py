@@ -57,7 +57,8 @@ class LaneVisualizer:
         """
         plt.figure(figsize=(width, height))  # 创建一个新的图形，并设置其大小
         self.map_info = None
-        self.points = []
+        self.static_points = []
+        self.temp_points = []
         plt.xlabel('X Axis')  # 设置x轴标签
         plt.ylabel('Y Axis')  # 设置
 
@@ -76,7 +77,11 @@ class LaneVisualizer:
         """
         self.map_info = map_info
         tasks = range(len(self.map_info.lanes_dict.values()))  # 创建进度条
-        self.points = points
+        self.static_points = points
+
+
+    def update_points(self, points):
+        self.temp_points = points
 
     def plot_point(self, x, y, text="", color='red', size=None):
         """
@@ -107,6 +112,9 @@ class LaneVisualizer:
         @param if_plot_polygons: 是否画出多边形，默认False
         @return:
         """
+
+        plt.clf()
+
         for index, lane_info in enumerate(tqdm(self.map_info.lanes_dict.values(),  total=len(self.map_info.lanes_dict.values()))): # desc='Save Picture',
             lane_id = lane_info.lane_id  # 车道id
             # print(lane_id)
@@ -132,8 +140,9 @@ class LaneVisualizer:
             offset = 0 #random_index / (len(colors)-1) * (right_point[len(center_point)//2, 1] - left_point[len(center_point)//2, 1])
             plt.text(center_point[len(center_point)//2, 0], center_point[len(center_point)//2, 1] + offset, lane_id, size="medium")
 
-        for point in self.points:
+        for point in self.static_points+ self.temp_points:
             self.plot_point(*point)
 
-        plt.show()
+        plt.draw()
+        plt.pause(0.01)
 

@@ -9,6 +9,9 @@
 ------------      -------    --------    -----------
 2024/4/22 18:59   sayo      1.0         None
 '''
+import sys
+sys.path.append("planner/sayo_planner/planner")
+
 from typing import List
 
 from planner.plannerBase import PlannerBase
